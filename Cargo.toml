@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "ddd_derives",
+    "ddd_model",
+    "ddd_cli",
+]
