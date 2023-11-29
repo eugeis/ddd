@@ -6,3 +6,4 @@ version = "0.1.0"
 
 [dependencies]
 ddd_derives = { version = "0", path = "../ddd_derives" }
+dyn-clone = "1.0.16"

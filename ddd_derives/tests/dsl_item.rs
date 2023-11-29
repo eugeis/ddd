@@ -1,10 +1,10 @@
 extern crate ddd_derives;
 
-use ddd_derives::Builder;
+use ddd_derives::AsDslItem;
 
 #[test]
 fn dsl_item() {
-    #[derive(Builder)]
+    #[derive(AsDslItem)]
     pub struct Command {
         executable: String,
         args: Vec<String>,

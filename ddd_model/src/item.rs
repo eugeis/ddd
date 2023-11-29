@@ -1,21 +1,21 @@
-use ddd_derives::Builder;
+use ddd_derives::AsDslItem;
 
-#[derive(Builder)]
-pub struct Command {
-    executable: String,
-    args: Vec<String>,
-    env: Vec<String>,
-    current_dir: Option<String>,
+#[derive(AsDslItem)]
+struct Item {
+    name: String,
+    namespace: String,
+    desc: String,
+    //parent: Box<dyn DslItem>,
+    internal: bool,
+    //derived_from: Box<dyn DslItem>,
+    //derived_items: Vec<Box<dyn DslItem>>,
+    derived_as_type: String,
+    initialized: bool,
 }
 
-fn b() {
-    let command = Command::builder()
-        .executable("cargo".to_owned())
-        .args(vec!["build".to_owned(), "--release".to_owned()])
-        .env(vec![])
-        //.current_dir("..".to_owned())
-        .build()
-        .unwrap();
-
-    assert_eq!(command.executable, "cargo");
+#[derive(AsDslItem)]
+struct Attribute {
+    nullable: bool,
+    multi: bool,
+    name_non_fluent: String,
 }
