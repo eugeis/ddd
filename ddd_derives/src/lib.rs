@@ -2,7 +2,7 @@ extern crate proc_macro2;
 extern crate quote;
 extern crate syn;
 
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(AsDslItem)]
@@ -13,48 +13,51 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let trait_ident = format_ident!("Dsl{ident}");
 
     let fields = match &ast {
-        syn::DeriveInput{
-            data: syn::Data::Struct(
-                syn::DataStruct{
-                    fields: syn::Fields::Named (
-                        syn::FieldsNamed{
-                            named: fields,
-                            ..
-                        },
-                    ),
+        syn::DeriveInput {
+            data:
+                syn::Data::Struct(syn::DataStruct {
+                    fields: syn::Fields::Named(syn::FieldsNamed { named: fields, .. }),
                     ..
-                },
-
-            ),
+                }),
             ..
-        } => {
-            fields
-        },
-        _ => unimplemented!("derive(AsDslItem) only supports structs with named fields")
+        } => fields,
+        _ => unimplemented!("derive(AsDslItem) only supports structs with named fields"),
     };
 
     let dsl_fields = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
         let id_empty = format_ident!("{id}_empty");
-        let ty = try_optional(&field.ty).or(std::option::Option::Some(field.ty));
-        
-        quote! { 
-            #id: std::option::Option<#ty>,
-            #id_empty: #ty
-         }
+        let ty = std::option::Option::Some(&field.ty);
+
+        if is_box_type(&field.ty) {
+            quote! {
+                #id: std::option::Option<#ty>
+            }
+        } else {
+            quote! {
+                #id: std::option::Option<#ty>,
+                #id_empty: #ty
+            }
+        }
     });
 
     let dsl_defaults = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
         let id_empty = format_ident!("{id}_empty");
-        let ty = field.ty;
+        let ty = &field.ty;
         let empty_value = empty_value(&ty);
 
-        quote! { 
-            #id: std::option::Option::None,
-            #id_empty: #empty_value
+        if is_box_type(&field.ty) {
+            quote! {
+                #id: std::option::Option::None
+            }
+        } else {
+            quote! {
+                #id: std::option::Option::None,
+                #id_empty: #empty_value
+            }
         }
     });
 
@@ -62,7 +65,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let field = field.clone();
         let id = field.ident.unwrap();
         let ty = field.ty;
-        let ty_ref = type_ref(&ty);
+        let ty_ref = dsl_type_ref(&ty);
 
         quote! {
             fn #id(&self) -> #ty_ref;
@@ -73,14 +76,22 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let field = field.clone();
         let id = field.ident.unwrap();
         let id_empty = format_ident!("{id}_empty");
-        let ty = field.ty;
-        let ty_ref = type_ref(&ty);
+        let ty = &field.ty;
+        let ty_ref = dsl_type_ref(&ty);
 
-        quote! {
-            fn #id(&self) -> #ty_ref {
-                match &self.#id {
-                    Some(v) => &v,
-                    None => &self.#id_empty,
+        if is_box_type(&field.ty) {
+            quote! {
+                fn #id(&self) -> #ty_ref {
+                    &self.#id
+                }
+            }
+        } else {
+            quote! {
+                fn #id(&self) -> #ty_ref {
+                    match &self.#id {
+                        Some(v) => &v,
+                        None => &self.#id_empty,
+                    }
                 }
             }
         }
@@ -89,7 +100,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let setters = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
-        let ty = try_optional(&field.ty).or(std::option::Option::Some(field.ty));
+        let ty = std::option::Option::Some(field.ty);
 
         quote! {
             pub fn #id(&mut self, value: #ty) -> &mut Self {
@@ -103,7 +114,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         pub trait #trait_ident {
             #(#getters_def)*
         }
-
+        //#[derive(Default, Debug, Clone, PartialEq)]
         pub struct #dsl_ident {
             #(#dsl_fields),*
         }
@@ -125,52 +136,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
     proc_macro::TokenStream::from(output)
-}
-
-fn try_optional(ty: &syn::Type) -> std::option::Option<syn::Type> {
-    // Pull out the first path segments (containing just the Option)
-    // Verify that there's exactly one value in the path
-    let segments = match ty {
-        syn::Type::Path(
-            syn::TypePath{
-                path: syn::Path {
-                    segments,
-                    ..
-                },
-                ..
-            }
-        ) 
-        if segments.len() == 1
-        => segments.clone(),
-        _ => return std::option::Option::None,
-    };
-
-    // Pull out the first arg segment in the Option
-    // Verify that there's exactly one parameter
-    let args = match &segments[0] {
-        syn::PathSegment{
-            ident,
-            arguments: syn::PathArguments::AngleBracketed(
-                syn::AngleBracketedGenericArguments {
-                    args,
-                    ..
-                }
-            )
-        }
-        if ident == "Option" && args.len() == 1
-        => args,
-        _ => return std::option::Option::None,
-    };
-
-    // Extract that single type
-    // Verify that there's exactly one
-    // TODO: Future case should deal with things like lifetimes etc that could also be in here
-    let ty = match &args[0] {
-        syn::GenericArgument::Type(t) => t,
-        _ => return std::option::Option::None
-    };
-
-    Some(ty.clone())
 }
 
 fn empty_value(ty: &syn::Type) -> proc_macro2::TokenStream {
@@ -201,10 +166,21 @@ fn empty_value(ty: &syn::Type) -> proc_macro2::TokenStream {
     }
 }
 
-fn type_ref(ty: &syn::Type) -> proc_macro2::TokenStream {
+fn is_box_type(ty: &syn::Type) -> bool {
+    if let syn::Type::Path(path) = ty {
+        if let Some(segment) = path.path.segments.last() {
+            if segment.ident.to_string() == "Box" {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn dsl_type_ref(ty: &syn::Type) -> proc_macro2::TokenStream {
     match ty {
         syn::Type::Path(path) => {
-            let path_str = quote::quote! {#path}.to_string();
+            let path_str = quote! {#path}.to_string();
             match path_str.as_str() {
                 "String" => quote! { &str },
                 "bool" => quote! { &bool },
@@ -222,9 +198,9 @@ fn type_ref(ty: &syn::Type) -> proc_macro2::TokenStream {
                 "usize" => quote! { &usize },
                 "f32" => quote! { &f32 },
                 "f64" => quote! { &f64 },
-                _ => quote! { &std::default::Default::default() },
+                _ => quote! { &std::option::Option<#ty> },
             }
         }
-        _ => quote! { &path_str },
+        _ => quote! { &#ty },
     }
 }

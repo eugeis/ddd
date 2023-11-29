@@ -5,12 +5,12 @@ struct Item {
     name: String,
     namespace: String,
     desc: String,
-    //parent: Box<dyn DslItem>,
     internal: bool,
-    //derived_from: Box<dyn DslItem>,
-    //derived_items: Vec<Box<dyn DslItem>>,
     derived_as_type: String,
     initialized: bool,
+    parent: Box<dyn DslItem>,
+    //derived_from: Box<dyn DslItem>,
+    //derived_items: Vec<Box<dyn DslItem>>,
 }
 
 #[derive(AsDslItem)]
