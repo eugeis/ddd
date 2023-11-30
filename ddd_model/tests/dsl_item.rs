@@ -1,26 +1,21 @@
 extern crate ddd_derives;
 
-use ddd_derives::{AsDslItem};
+use ddd_derives::AsDslItem;
 
 #[test]
 fn dsl_item() {
 
     #[derive(AsDslItem)]
-    pub struct Command {
+    struct Command {
         executable: String,
-        args: Vec<String>,
-        env: Vec<String>,
-        current_dir: Option<String>,
+        current_dir: String,
     }
 
-    let command = Command::builder()
-        .executable("cargo".to_owned())
-        .args(vec!["build".to_owned(), "--release".to_owned()])
-        .env(vec![])
-        .current_dir("..".to_owned())
-        .build()
-        .unwrap();
+    let command = DslCommand(|o| {
+        o.executable("cargo".to_owned()).current_dir(".".to_owned());
+    });
+    
 
-    assert_eq!(command.executable, "cargo");
+    assert_eq!(command.executable_get(), "cargo");
 
 }

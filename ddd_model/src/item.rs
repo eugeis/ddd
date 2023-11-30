@@ -9,12 +9,13 @@ struct Item {
     derived_as_type: String,
     initialized: bool,
     parent: Box<dyn DslItem>,
-    //derived_from: Box<dyn DslItem>,
+    derived_from: Box<dyn DslItem>,
     //derived_items: Vec<Box<dyn DslItem>>,
 }
 
 #[derive(AsDslItem)]
 struct Attribute {
+    //item: DslItem,
     nullable: bool,
     multi: bool,
     name_non_fluent: String,

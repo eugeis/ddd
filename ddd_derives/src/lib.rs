@@ -11,6 +11,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ident = &ast.ident;
     let dsl_ident = format_ident!("Dsl{ident}Impl");
     let trait_ident = format_ident!("Dsl{ident}");
+    let dsl_ident_default = format_ident!("Dsl{ident}Default");
 
     let fields = match &ast {
         syn::DeriveInput {
@@ -64,30 +65,32 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let getters_def = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
+        let id_get = format_ident!("{id}_get");
         let ty = field.ty;
         let ty_ref = dsl_type_ref(&ty);
 
         quote! {
-            fn #id(&self) -> #ty_ref;
+            fn #id_get(&self) -> #ty_ref;
         }
     });
 
     let getters = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
+        let id_get = format_ident!("{id}_get");
         let id_empty = format_ident!("{id}_empty");
         let ty = &field.ty;
         let ty_ref = dsl_type_ref(&ty);
 
         if is_box_type(&field.ty) {
             quote! {
-                fn #id(&self) -> #ty_ref {
+                fn #id_get(&self) -> #ty_ref {
                     &self.#id
                 }
             }
         } else {
             quote! {
-                fn #id(&self) -> #ty_ref {
+                fn #id_get(&self) -> #ty_ref {
                     match &self.#id {
                         Some(v) => &v,
                         None => &self.#id_empty,
@@ -126,13 +129,17 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl #trait_ident for #dsl_ident {
             #(#getters)*
         }
-
-        impl #ident {
-            pub fn dsl() -> #dsl_ident {
-                #dsl_ident {
-                    #(#dsl_defaults),*
-                }
+        
+        pub fn #dsl_ident_default() -> #dsl_ident {
+            #dsl_ident {
+                #(#dsl_defaults),*
             }
+        }
+
+        pub fn #trait_ident(adapt: fn(item: &mut #dsl_ident)) -> #dsl_ident {
+            let mut ret = #dsl_ident_default();
+            adapt(&mut ret);
+            ret
         }
     };
     proc_macro::TokenStream::from(output)
