@@ -10,6 +10,9 @@ quote = "1"
 proc-macro2 = "1"
 dyn-clone = "1.0.16"
 ambassador = "0.3.5"
+typetag = "0.2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_yaml = "0"
 
 [lib]
 proc-macro = true

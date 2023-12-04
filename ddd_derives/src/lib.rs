@@ -143,6 +143,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     });
 
     let output = quote! {
+        #[typetag::serde(tag = "type")]
         pub trait #trait_ident_get {
             #(#getters_def)*
         }
@@ -153,7 +154,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         pub trait #trait_ident : #trait_ident_set + #trait_ident_get {}
 
-        #[derive(Default, Debug, Clone, PartialEq)]
+        #[derive(Default, Debug, Clone, PartialEq, ::serde::Serialize, ::serde::Deserialize)]
         pub struct #dsl_ident {
             #(#dsl_fields),*
         }
@@ -162,6 +163,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             #(#setters)*
         }
 
+        #[typetag::serde]
         impl #trait_ident_get for #dsl_ident {
             #(#getters)*
         }

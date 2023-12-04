@@ -10,3 +10,4 @@ dyn-clone = "1.0.16"
 serde = { version = "1", features = ["derive", "rc"] }
 serde_yaml = "0"
 typetag = "0.2"
+ambassador = "0.3.5"
