@@ -1,3 +1,4 @@
+
 use ddd_derives::AsDslItem;
 
 #[derive(AsDslItem)]
@@ -8,11 +9,12 @@ struct Item {
     internal: bool,
     derived_as_type: String,
     initialized: bool,
-    parent: Box<dyn DslItem>,
-    derived_from: Box<dyn DslItem>,
+    //parent: Box<dyn DslItemGet>,
+    //derived_from: Box<dyn DslItem>,
     //derived_items: Vec<Box<dyn DslItem>>,
 }
 
+/*
 #[derive(AsDslItem)]
 struct Attribute {
     //item: DslItem,
@@ -20,3 +22,4 @@ struct Attribute {
     multi: bool,
     name_non_fluent: String,
 }
+ */

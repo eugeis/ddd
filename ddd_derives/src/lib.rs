@@ -11,7 +11,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ident = &ast.ident;
     let dsl_ident = format_ident!("Dsl{ident}Impl");
     let trait_ident = format_ident!("Dsl{ident}");
-    let dsl_ident_default = format_ident!("Dsl{ident}Default");
+    let trait_ident_get = format_ident!("Dsl{ident}Get");
+    let trait_ident_set = format_ident!("Dsl{ident}Set");
+    let dsl_ident_builder = format_ident!("dsl{ident}");
+    let dsl_ident_builder_default = format_ident!("dsl{ident}Default");
 
     let fields = match &ast {
         syn::DeriveInput {
@@ -103,41 +106,74 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let setters = fields.iter().map(|field| {
         let field = field.clone();
         let id = field.ident.unwrap();
-        let ty = std::option::Option::Some(field.ty);
 
-        quote! {
-            pub fn #id(&mut self, value: #ty) -> &mut Self {
-                self.#id = std::option::Option::Some(value);
-                self
+        if is_string(&field.ty) {
+            quote! {
+                fn #id(&mut self, value: &str) -> &mut Self {
+                    self.#id = std::option::Option::Some(value.to_owned());
+                    self
+                }
+            }
+        } else {
+            let ty = std::option::Option::Some(&field.ty);
+            quote! {
+                fn #id(&mut self, value: #ty) -> &mut Self {
+                    self.#id = std::option::Option::Some(value);
+                    self
+                }
+            }
+        }
+    });
+
+
+    let setters_def = fields.iter().map(|field| {
+        let field = field.clone();
+        let id = field.ident.unwrap();
+
+        if is_string(&field.ty) {
+            quote! {
+                fn #id(&mut self, value: &str) -> &mut Self;
+            }
+        } else {
+            let ty = std::option::Option::Some(&field.ty);
+            quote! {
+                fn #id(&mut self, value: #ty) -> &mut Self;
             }
         }
     });
 
     let output = quote! {
-        pub trait #trait_ident {
+        pub trait #trait_ident_get {
             #(#getters_def)*
         }
-        //#[derive(Default, Debug, Clone, PartialEq)]
+
+        pub trait #trait_ident_set {
+            #(#setters_def)*
+        }
+
+        pub trait #trait_ident : #trait_ident_set + #trait_ident_get {}
+
+        #[derive(Default, Debug, Clone, PartialEq)]
         pub struct #dsl_ident {
             #(#dsl_fields),*
         }
 
-        impl #dsl_ident {
+        impl #trait_ident_set for #dsl_ident {
             #(#setters)*
         }
 
-        impl #trait_ident for #dsl_ident {
+        impl #trait_ident_get for #dsl_ident {
             #(#getters)*
         }
-        
-        pub fn #dsl_ident_default() -> #dsl_ident {
+
+        pub fn #dsl_ident_builder_default() -> #dsl_ident {
             #dsl_ident {
                 #(#dsl_defaults),*
             }
         }
 
-        pub fn #trait_ident(adapt: fn(item: &mut #dsl_ident)) -> #dsl_ident {
-            let mut ret = #dsl_ident_default();
+        pub fn #dsl_ident_builder(adapt: fn(o: &mut #dsl_ident)) -> #dsl_ident {
+            let mut ret = #dsl_ident_builder_default();
             adapt(&mut ret);
             ret
         }
@@ -209,5 +245,18 @@ fn dsl_type_ref(ty: &syn::Type) -> proc_macro2::TokenStream {
             }
         }
         _ => quote! { &#ty },
+    }
+}
+
+fn is_string(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Path(path) => {
+            let path_str = quote! {#path}.to_string();
+            match path_str.as_str() {
+                "String" => true,
+                _ => false,
+            }
+        }
+        _ => false,
     }
 }

@@ -9,10 +9,11 @@ fn dsl_item() {
     struct Command {
         executable: String,
         current_dir: String,
+        b: bool,
     }
 
-    let command = DslCommand(|o| {
-        o.executable("cargo".to_owned()).current_dir(".".to_owned());
+    let command = dslCommand(|o| {
+        o.executable("cargo").current_dir(".").b(false);
     });
     
 

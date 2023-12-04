@@ -9,6 +9,7 @@ syn = { version = "2.0", features = ["derive", "fold", "full", "extra-traits"] }
 quote = "1"
 proc-macro2 = "1"
 dyn-clone = "1.0.16"
+ambassador = "0.3.5"
 
 [lib]
 proc-macro = true

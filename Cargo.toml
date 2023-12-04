@@ -5,4 +5,5 @@ members = [
     "ddd_derives",
     "ddd_model",
     "ddd_cli",
+    "ddd_cp"
 ]
